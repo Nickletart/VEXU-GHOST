@@ -1,86 +1,76 @@
-# Windows Users
-While you really need an Ubuntu operating system if you want to do software for robotics in the long-term (see https://itsfoss.com/install-ubuntu-1404-dual-boot-mode-windows-8-81-uefi/), if you want to try things out without committing to reconfiguring your whole computer, we have a workaround using WSL2.
+# Setting up your dev environment (Windows / macOS)
 
-WSL2 is "Windows Subsystem for Linux" and allows you to develop using Linux within your Windows OS. I _**highly**_ recommend using this option over a standard Virtual Machine, as VM's have terrible performance in my experience. We will be rendering graphics on the Windows-side using a concept called X11 Forwarding, so WSL2 ends up with substantially improved performance.
+The repo now ships a Docker setup that works the same on Windows, macOS, and Linux — no WSL2 + X11 forwarding dance, no Ubuntu-version matching. Install Docker Desktop, clone the repo, and run `docker compose up -d`.
 
-The biggest tradeoff with not having a "true" Linux installation is you will not be able to interface directly to robot hardware and will likely have trouble with USB input (Might work out on Windows 11 via usb-passthrough).
+Longer-term, if you want to do robotics software on a regular basis, a native Ubuntu install (or dual-boot) will give you the best performance and hardware access. But Docker is good enough for onboarding and day-to-day ROS 2 development.
 
-## 1) Install WSL2
-Make sure you install **WSL2** and **Ubuntu 22.04** or you will have to redo it.
+## 1) Install Docker Desktop
 
-NOTE: Step 4 of the guide below tends to go wrong and people install the the wrong Ubuntu version. When you get to that point, use the following command instead,
-courtesy of Alessandra!
+- **Windows:** In powershell, run `winget install -e --id Docker.DockerDesktop`
+- **macOS:** <https://docs.docker.com/desktop/install/mac-install/>
+  Works on Intel and Apple Silicon. On Apple Silicon the container reports `aarch64`; the stock build skips the Gazebo sim packages on that architecture.
 
-`wsl --install -d Ubuntu-22.04`
+Start Docker Desktop once after installing. Make sure to restart terminal before running. Verify:
 
-https://www.omgubuntu.co.uk/how-to-install-wsl2-on-windows-10
-
-## 2) Install X11 Forwarding
-X11 Forwarding allows you to send graphics from your WSL Installation to your windows computer.
-### 2.1) Install XLaunch
-https://sourceforge.net/projects/vcxsrv/
-You should now have this application available via the start menu or desktop.
-
-![image](https://github.com/VEXU-GHOST/VEXU_GHOST/assets/47650195/eb835791-7247-4fad-a99e-40ed7254cd8d)
-### 2.2) Configure XLaunch
-Open XLaunch for the first time and match the **following configuration exactly.** Click next after each window.
-
-![image](https://github.com/VEXU-GHOST/VEXU_GHOST/assets/47650195/bc51573e-c684-4891-8d76-d5b8f0c5df8d)
-
-![image](https://github.com/VEXU-GHOST/VEXU_GHOST/assets/47650195/bc8b48d8-4597-4114-835b-86b0dba355e6)
-
-**This next one is different!**
-
-![image](https://github.com/VEXU-GHOST/VEXU_GHOST/assets/47650195/7c911e71-5cfa-4836-b227-b5b8fabd70f4)
-
-Finally, we will save this configuration to your desktop for you to use next time. Delete the original XLaunch shortcut afterwards so you don't get confused.
-
-![image](https://github.com/VEXU-GHOST/VEXU_GHOST/assets/47650195/defabcc3-5ee7-433f-ac44-02d13e7da7c3)
-
-If XLaunch is running in the background, you should see this icon in the bottom rightof Windows. You will need to restart it everytime you restart your computer.
-
-![image](https://github.com/VEXU-GHOST/VEXU_GHOST/assets/47650195/316ec88a-5ece-44f4-93f4-a2c45bd7c9b5)
-
-
-## 3) Configure ~/.bashrc
-In a WSL2 Terminal, run the following lines (separately):
+```bash
+docker version
+docker compose version
 ```
-echo "export DISPLAY=$(ip route list default | awk '{print $3}'):0" >> ~/.bashrc
-```
-```
-echo "export LIBGL_ALWAYS_INDIRECT=0" >> ~/.bashrc
+**Restart your computer once.** Then, open Docker Desktop.
+
+Docker will really want you to install WSL2 (Windows Subsystem for Linux) when you try opening it again. Make sure to do that, and try opening Docker once more.
+
+At the bottom of the Docker window there should be a little >_ symbol; you can open a shell inside of Docker and run the above commands again to make sure everything looks good.
+
+
+If you **don't** get a message from Docker to install WSL, try this command in your Windows Powershell:
+
+```bash
+wsl --install -d Ubuntu-22.04
 ```
 
-## 4) Try it out
-Ensure XLaunch is running.
+Follow whatever instructions the shell throws at you, including setting a username and password. Don't worry if you don't see any letters or asterisks show up on the shell when typing your password, that's just how Linux treats passwords and your password is indeed going through.
 
-In a WSL2 Terminal, run the following lines (separately):
+After Ubuntu's done installing the shell should boot you into an Ubuntu shell (you'll know because it's colored blue and green, and it should show the username you set just now).
+
+From here on out, to open the Ubuntu shell you can enter the following command:
+```bash
+wsl.exe -d Ubuntu-22.04
 ```
-sudo apt-get install x11-apps
+The rest of the code from here on out should be done in this Ubuntu shell.
+
+***IMPORTANT***: Now, set up Docker to be integrated with WSL.
+
+Click the gear icon at the top right. Then, go to Resources. One of the tabs should be called WSL Integration; open it and check the box saying "Enable integration with my default WSL distro", and turn on the option for Ubuntu 22.04 under "Enable integration with additional distros:".
+
+## 2) Install Git and configure SSH
+
+You need Git on the host — the container bind-mounts your host `~/.ssh` and `~/.gitconfig` read-only, so commits/pushes from inside the container use your host identity.
+
+- **Windows:** install Git with the following command in WSL:
+  ```bash
+  sudo apt install git -y
+- **macOS:** Git comes with Xcode Command Line Tools (`xcode-select --install`) or via Homebrew (`brew install git`).
+
+### 2.1) Generate an SSH key
+
+In WSL or Terminal (macOS):
+
+```bash
+ssh-keygen -t ed25519 -C "your_email@example.com"
 ```
 
-```
-xeyes
-```
+Press Enter through all the prompts.
 
-This should spawn two eyes which follow your cursor! Continue to [SSH Setup](#ssh-setup).
-If you have issues, reach out to Maxx (jessemaxxwilson@utexas.edu, Discord: Maxx#3164).
+### 2.2) Add the key to GitHub
 
-## 5) SSH Setup 
-If you haven't used Github on your computer before, you will need to add SSH keys. These let github recognize your computer (and this replaced using passwords last year).
+Print the public key:
 
-### 5.1) Generate SSH Keys
-In a WSL2 Terminal:
-```
-ssh-keygen -t ed25519 -C "PUT_YOUR_EMAIL_HERE@DONT_JUST_COPY_PASTE_THIS.com"
-```
-Spam "Enter" for all the following questions.
-
-### 5.2) Print Out SSH Key
-```
+```bash
 cat ~/.ssh/id_ed25519.pub
 ```
-Copy this to your clipboard. Then, go to github.com and follow these screenshots.
+
+Copy the entire output. On github.com:
 
 ![image](https://github.com/VEXU-GHOST/VEXU_GHOST/assets/47650195/d4107d08-13ee-4a29-ba03-7d72ea4bf5e5)
 
@@ -90,7 +80,84 @@ Copy this to your clipboard. Then, go to github.com and follow these screenshots
 
 ![image](https://github.com/VEXU-GHOST/VEXU_GHOST/assets/47650195/52daac1c-d046-402d-9dd9-7d2bf45ec4eb)
 
-Paste the key into the highlighted area, name it something like "My Laptop - WSL2" for the Title, and add the key.
+Paste the key, name it something like "My Laptop" for the title, and save.
 
-## Conclusions
-Now you should be all setup with WSL2! Continue Onboarding I [here](https://github.com/VEXU-GHOST/VEXU_GHOST?tab=readme-ov-file#installation).
+### 2.3) Configure your Git identity
+
+```bash
+git config --global user.name "Your Name"
+git config --global user.email "your_email@example.com"
+```
+
+### 2.4) Line endings (Windows only)
+
+Leave `core.autocrlf` alone, or set it to `input`:
+
+```bash
+git config --global core.autocrlf input
+```
+
+The repo's `.gitattributes` pins every text file to LF on checkout, so a fresh clone is
+correct either way. This only matters because the Linux container bind-mounts your
+Windows worktree directly — CRLF scripts fail there with `$'\r': command not found`.
+
+If you cloned **before** that was pinned, fix the existing checkout once:
+
+```bash
+bash <(git show HEAD:scripts/fix_line_endings.sh)
+```
+
+(Run it from Git Bash / WSL, not PowerShell. See
+[12_Docker/README.md](12_Docker/README.md) for the full symptom list.)
+
+## 3) Clone the repo and launch the dev container
+
+From your Ubuntu shell within PowerShell (Windows) or Terminal (macOS):
+
+```bash
+git clone git@github.com:VEXU-GHOST/VEXU_GHOST.git
+cd VEXU_GHOST
+git submodule update --init --recursive
+git checkout develop # change develop to the branch you are working on
+
+docker compose build              # first time only, ~10–15 min
+docker compose up -d              # start the dev container + noVNC
+docker compose exec vexu bash     # open a shell inside the container
+```
+
+This is the infamous part where everything can go wrong depending on your PC/specs. If you stall for more than 20 minutes on this part, LET ONE OF US KNOW AS SOON AS POSSIBLE. Or better yet, put it on onboarding-help. We're working on getting this process shatterproof, trust.
+
+Inside the new shell (it should say like, root# or something), **FIRST RUN THESE LINES**:
+
+```bash
+printf 'build:\n  executor: sequential\n'
+export COLCON_DEFAULTS_FILE=~/colcon-1worker.yaml
+export MAKEFLAGS="-j1"
+./scripts/build.sh -r
+```
+
+If you succeed in running the build command, it should only take about 10-15 minutes at most, and if you take a look at what the terminal says, it should only be showing one process at a time.
+
+Once you're done though, you can run this last command to open the simulator:
+
+```bash
+./scripts/launch_sim.sh           # start Gazebo
+```
+
+If you're on macOS the launch_sim might throw some errors, in that case just move onto the next step (localhost on your browser) to see the simulation in question.
+
+## 4) See the GUI (RViz, Gazebo)
+
+Open [http://localhost:8080/vnc.html](http://localhost:8080/vnc.html) in any browser on your host. That's it — no XLaunch, no XQuartz. Apps launched inside the container render into a virtual display that streams to your browser.
+
+Stop the container when done: `docker compose stop`.
+Use `docker compose down` only when you want to reset the container because it removes containers and drops writable in-container filesystem changes (for example, tools/extensions installed inside the container). State in `build/`, `install/`, `log/`, and the ccache volume persists.
+
+## Hardware caveats
+
+- **USB passthrough (PROS upload to a V5 brain)** is limited on Docker Desktop (macOS especially). For hardware work, run `pros upload` from a native Ubuntu install or from the Windows host directly with a native PROS install.
+- **Native Ubuntu** is still the best environment for competition day and anything touching real sensors/actuators. See the "Native Ubuntu 22.04" section in the [root README](README.md) when you're ready to set that up.
+
+## Next steps
+
+Continue Onboarding I: [main README → Setup](README.md#setup).
