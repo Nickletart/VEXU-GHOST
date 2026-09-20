@@ -136,11 +136,9 @@ export MAKEFLAGS="-j1"
 ./scripts/build.sh -r
 ```
 
-But if you succeed in running the above command, continue and run the following line:
+If you succeed in running the build command, it should only take about 10-15 minutes at most, and if you take a look at what the terminal says, it should only be showing one process at a time.
 
-```bash
-./scripts/build.sh                # compile the ROS 2 workspace
-```
+Once you're done though, you can run this last command to open the simulator:
 
 ```bash
 ./scripts/launch_sim.sh           # start Gazebo
